@@ -1,11 +1,11 @@
 const jwt = require("jsonwebtoken");
-const userToken = require("../models/deviceModel");
+const deviceModel = require("../models/deviceModel");
 
 module.exports.verifyRefreshToken = (refreshToken) => {
     const privateKey = process.env.REFRESH_TOKEN_PRIVATE_KEY;
 
     return new Promise((resolve, reject) => {
-        userToken.findOne({ token: refreshToken }, (err, doc) => {
+        deviceModel.findOne({ token: refreshToken }, (err, doc) => {
             if (!doc)
                 return reject({ error: true, message: "Invalid refresh token" });
 

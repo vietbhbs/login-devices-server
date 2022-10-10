@@ -12,94 +12,75 @@ const randToken = require('rand-token');
 const sign = promisify(jwt.sign).bind(jwt);
 const verify = promisify(jwt.verify).bind(jwt);
 const jwtVariable = require('../variables/jwt');
+const {signUpBodyValidation, logInBodyValidation} = require("../utils/validationSchema");
+const {generateTokens} = require("../utils/generateTokens");
 
 module.exports.login = async (req, res, next) => {
     try {
-        // check account
-        const {username, password} = req.body;
-        const user = await User.findOne({username});
+        const { error } = logInBodyValidation(req.body);
+        if (error)
+            return res
+                .status(400)
+                .json({ error: true, message: error.details[0].message });
 
-        if (!user) return res.json({msg: "Incorrect Username or Password", status: false});
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) return res.json({msg: "Incorrect Username or Password", status: false});
-
-        const accessTokenLife = process.env.ACCESS_TOKEN_LIFE;
-        const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
-
-        const dataForAccessToken = {
-            username: user.username,
-        };
-
-        const accessToken = await authMethod.generateToken(
-            dataForAccessToken,
-            accessTokenSecret,
-            accessTokenLife,
-        );
-
-        if (!accessToken) {
+        const user = await User.findOne({ email: req.body.email });
+        if (!user)
             return res
                 .status(401)
-                .send('Đăng nhập không thành công, vui lòng thử lại.');
-        }
+                .json({ error: true, message: "Invalid email or password" });
 
-        let refreshToken = randToken.generate(jwtVariable.refreshTokenSize); // tạo 1 refresh token ngẫu nhiên
+        const verifiedPassword = await bcrypt.compare(
+            req.body.password,
+            user.password
+        );
+        if (!verifiedPassword)
+            return res
+                .status(401)
+                .json({ error: true, message: "Invalid email or password" });
 
-        if (!user.refreshToken) {
-            await User.findByIdAndUpdate(
-                user.id,
-                {
-                    refreshToken: refreshToken,
-                    accessToken: accessToken
-                },
-                {new: true}
-            );
-        } else {
-            // Nếu user này đã có refresh token thì lấy refresh token đó từ database
-            await User.findByIdAndUpdate(
-                user.id,
-                {
-                    accessToken: accessToken
-                },
-                {new: true}
-            );
+        // save user device
+        const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : '';
+        const deviceName = req.device.type + '-' + userAgent
+        const { accessToken, refreshToken } = await generateTokens(user, deviceName);
 
-        }
-
-        return res.json({
-            status: true,
-            user
+        res.status(200).json({
+            error: false,
+            accessToken,
+            refreshToken,
+            message: "Logged in sucessfully",
         });
-    } catch (ex) {
-        next(ex);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: true, message: "Internal Server Error" });
     }
 };
 
 module.exports.register = async (req, res, next) => {
     try {
-        const {username, email, password} = req.body;
-        const usernameCheck = await User.findOne({username});
-        if (usernameCheck)
-            return res.json({msg: "Username already used", status: false});
-        const emailCheck = await User.findOne({email});
-        if (emailCheck)
-            return res.json({msg: "Email already used", status: false});
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await User.create({
-            email,
-            username,
-            password: hashedPassword,
-        });
-        delete user.password;
-        // save user device
-        const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : '';
-        const deviceName = req.device.type + '-' + userAgent
-        const device = await Device.create({
-            deviceName,
-            email
-        })
-        return res.json({status: true, user, device});
-    } catch (ex) {
-        next(ex);
+        const {error} = signUpBodyValidation(req.body);
+
+        if (error) {
+            return res.status(400)
+                .json({error: true, message: error.details[0].message});
+        }
+
+        const user = await User.findOne({email: req.body.email});
+
+        if (user) {
+            return res.status(400)
+                .json({error: true, message: "User with given email already exist"});
+        }
+
+        const salt = await bcrypt.genSalt(Number(process.env.SALT));
+        const hashPassword = await bcrypt.hash(req.body.password, salt);
+
+        await new User({...req.body, password: hashPassword}).save();
+
+        res.status(201)
+            .json({error: false, message: "Account created sucessfully"});
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({error: true, message: "Internal Server Error"});
     }
 };
 

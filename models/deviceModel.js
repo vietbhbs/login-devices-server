@@ -1,12 +1,13 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
 const deviceSchema = new mongoose.Schema({
     deviceName: {
         type: String,
         required: true,
     },
-    email: {
-        type: String,
+    userId: {
+        type: Schema.Types.ObjectId,
         required: true,
     },
     accessToken: {
