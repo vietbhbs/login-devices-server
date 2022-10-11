@@ -6,12 +6,15 @@ module.exports.verifyRefreshToken = (refreshToken) => {
 
     return new Promise((resolve, reject) => {
         deviceModel.findOne({ token: refreshToken }, (err, doc) => {
-            if (!doc)
+            if (!doc){
                 return reject({ error: true, message: "Invalid refresh token" });
+            }
 
             jwt.verify(refreshToken, privateKey, (err, tokenDetails) => {
-                if (err)
+                if (err){
                     return reject({ error: true, message: "Invalid refresh token" });
+                }
+
                 resolve({
                     tokenDetails,
                     error: false,

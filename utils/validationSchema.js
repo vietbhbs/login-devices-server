@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const passwordComplexity = require("joi-password-complexity");
+const Device = require("../models/deviceModel");
 
 const signUpBodyValidation = (body) => {
     const schema = Joi.object({
@@ -25,8 +26,16 @@ const refreshTokenBodyValidation = (body) => {
     return schema.validate(body);
 };
 
+const checkLoginDevices = async (userId) => {
+    const countDevice = await Device.findOne({userId: userId})
+        .distinct('deviceName');
+
+    return await countDevice;
+};
+
 module.exports = {
     signUpBodyValidation,
     logInBodyValidation,
-    refreshTokenBodyValidation
+    refreshTokenBodyValidation,
+    checkLoginDevices
 }

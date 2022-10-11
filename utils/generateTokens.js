@@ -15,10 +15,10 @@ module.exports.generateTokens = async (user, deviceName) => {
             { expiresIn: "7d" }
         );
 
-        const userToken = await deviceModel.findOne({ userId: user._id, deviceName: deviceName});
-        if (userToken) await userToken.remove();
+        const device = await deviceModel.findOne({ userId: user._id, deviceName: deviceName});
+        if (device) await device.remove();
 
-        await new deviceModel({ userId: user._id, accessToken: refreshToken, deviceName: deviceName}).save();
+        await new deviceModel({ userId: user._id, token: refreshToken, deviceName: deviceName}).save();
         return Promise.resolve({ accessToken, refreshToken });
     } catch (err) {
         return Promise.reject(err);

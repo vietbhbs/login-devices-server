@@ -5,6 +5,7 @@ const {disconnect, disconnectSockets, on} = require("socket.io");
 const io = require("nodemon");
 const authMethod = require("../models/methodsModel");
 const socket = require("./userController");
+const deviceModel = require("../models/deviceModel");
 
 const jwt = require('jsonwebtoken');
 const promisify = require('util').promisify;
@@ -12,46 +13,62 @@ const randToken = require('rand-token');
 const sign = promisify(jwt.sign).bind(jwt);
 const verify = promisify(jwt.verify).bind(jwt);
 const jwtVariable = require('../variables/jwt');
-const {signUpBodyValidation, logInBodyValidation} = require("../utils/validationSchema");
+const {
+    signUpBodyValidation,
+    logInBodyValidation,
+    checkLoginDevices,
+    refreshTokenBodyValidation
+} = require("../utils/validationSchema");
 const {generateTokens} = require("../utils/generateTokens");
+const {verifyRefreshToken} = require("../utils/refreshToken");
 
 module.exports.login = async (req, res, next) => {
     try {
-        const { error } = logInBodyValidation(req.body);
-        if (error)
-            return res
-                .status(400)
-                .json({ error: true, message: error.details[0].message });
+        const {error} = logInBodyValidation(req.body);
 
-        const user = await User.findOne({ email: req.body.email });
-        if (!user)
-            return res
-                .status(401)
-                .json({ error: true, message: "Invalid email or password" });
+        if (error) {
+            return res.status(400)
+                .json({error: true, message: error.details[0].message});
+        }
+
+        const user = await User.findOne({email: req.body.email});
+
+        if (!user) {
+            return res.status(401)
+                .json({error: true, message: "Invalid email or password"});
+        }
 
         const verifiedPassword = await bcrypt.compare(
             req.body.password,
             user.password
         );
-        if (!verifiedPassword)
-            return res
-                .status(401)
-                .json({ error: true, message: "Invalid email or password" });
+
+        if (!verifiedPassword) {
+            return res.status(401)
+                .json({error: true, message: "Invalid email or password"});
+        }
 
         // save user device
         const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : '';
-        const deviceName = req.device.type + '-' + userAgent
-        const { accessToken, refreshToken } = await generateTokens(user, deviceName);
+        const deviceName = req.device.type + '-' + userAgent;
+        const devicesAvailable = await checkLoginDevices(user['_id'].toString());
+
+        if (devicesAvailable.length >= 3) {
+            return res.status(401)
+                .json({error: true, message: "Limit devices logged"});
+        }
+
+        const {accessToken, refreshToken} = await generateTokens(user, deviceName);
 
         res.status(200).json({
             error: false,
             accessToken,
             refreshToken,
-            message: "Logged in sucessfully",
+            message: "Logged in successfully",
         });
     } catch (err) {
         console.log(err);
-        res.status(500).json({ error: true, message: "Internal Server Error" });
+        res.status(500).json({error: true, message: "Internal Server Error"});
     }
 };
 
@@ -77,7 +94,7 @@ module.exports.register = async (req, res, next) => {
         await new User({...req.body, password: hashPassword}).save();
 
         res.status(201)
-            .json({error: false, message: "Account created sucessfully"});
+            .json({error: false, message: "Account created successfully"});
     } catch (err) {
         console.log(err);
         res.status(500).json({error: true, message: "Internal Server Error"});
@@ -86,12 +103,7 @@ module.exports.register = async (req, res, next) => {
 
 module.exports.getAllUsers = async (req, res, next) => {
     try {
-        const accessTokenFromHeader = req.headers.x_authorization;
-        console.log(accessTokenFromHeader);
-        if (!accessTokenFromHeader) {
-            return res.status(401).send('Không tìm thấy access token!');
-        }
-        const users = await User.find({_id: {$ne: req.params.id}}).select([
+        const users = await User.find().select([
             "email",
             "username",
             "avatarImage",
@@ -124,15 +136,29 @@ module.exports.setAvatar = async (req, res, next) => {
     }
 };
 
-module.exports.logOut = (req, res, next) => {
+module.exports.logOut = async (req, res, next) => {
     try {
-        if (!req.params.id) return res.json({msg: "User id is required "});
-        onlineUsers.delete(req.params.id);
-        return res.status(200).send();
-    } catch (ex) {
-        next(ex);
+        const {error} = refreshTokenBodyValidation(req.body);
+        if (error) {
+            return res
+                .status(400)
+                .json({error: true, message: error.details[0].message});
+        }
+
+        const userToken = await deviceModel.findOne({token: req.body.refreshToken});
+        if (!userToken)
+            return res
+                .status(200)
+                .json({error: false, message: "Logged Out Successfully"});
+
+        await userToken.remove();
+        res.status(200).json({error: false, message: "Logged Out Successfully"});
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({error: true, message: "Internal Server Error"});
     }
 };
+
 module.exports.disconnect = async (req, res, next) => {
     try {
         const accessTokenFromHeader = req.headers.x_authorization;
@@ -164,6 +190,30 @@ module.exports.disconnect = async (req, res, next) => {
     } catch (ex) {
         next(ex);
     }
-
 };
+
+module.exports.freshToken = async (req, res) => {
+    const {error} = refreshTokenBodyValidation(req.body);
+    if (error) {
+        return res.status(400)
+            .json({error: true, message: error.details[0].message});
+    }
+
+    verifyRefreshToken(req.body.refreshToken)
+        .then(({tokenDetails}) => {
+            const payload = {_id: tokenDetails._id,};
+            const accessToken = jwt.sign(
+                payload,
+                process.env.ACCESS_TOKEN_PRIVATE_KEY,
+                {expiresIn: "24h"}
+            );
+            res.status(200).json({
+                error: false,
+                accessToken,
+                message: "Access token created successfully",
+            });
+        })
+        .catch((err) => res.status(400).json(err));
+}
+
 

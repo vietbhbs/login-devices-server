@@ -2,13 +2,9 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const deviceSchema = new mongoose.Schema({
-    deviceName: {
-        type: String,
-        required: true,
-    },
-    userId: {
+    deviceId: {
         type: Schema.Types.ObjectId,
-        required: true,
+        required: true
     },
     token: {
         type: String,
@@ -21,4 +17,4 @@ const deviceSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model("Devices", deviceSchema);
+module.exports = mongoose.model("Tokens", deviceSchema);
