@@ -30,7 +30,7 @@ const checkLoginDevices = async (userId) => {
     const countDevice = await Device.findOne({userId: userId})
         .distinct('deviceName');
 
-    return await countDevice;
+    return countDevice;
 };
 
 module.exports = {

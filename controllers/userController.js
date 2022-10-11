@@ -9,7 +9,8 @@ const deviceModel = require("../models/deviceModel");
 
 const jwt = require('jsonwebtoken');
 const promisify = require('util').promisify;
-const randToken = require('rand-token');
+// const randToken = require('rand-token');
+const macaddress = require('macaddress')
 const sign = promisify(jwt.sign).bind(jwt);
 const verify = promisify(jwt.verify).bind(jwt);
 const jwtVariable = require('../variables/jwt');
@@ -49,8 +50,12 @@ module.exports.login = async (req, res, next) => {
         }
 
         // save user device
-        const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : '';
-        const deviceName = req.device.type + '-' + userAgent;
+        let deviceName = ''
+        macaddress.one(function (err, mac) {
+            deviceName = req.device.type + '-' + mac;
+            ;
+        });
+
         const devicesAvailable = await checkLoginDevices(user['_id'].toString());
 
         if (devicesAvailable.length >= 3) {
@@ -139,19 +144,33 @@ module.exports.setAvatar = async (req, res, next) => {
 module.exports.logOut = async (req, res, next) => {
     try {
         const {error} = refreshTokenBodyValidation(req.body);
+
         if (error) {
             return res
                 .status(400)
                 .json({error: true, message: error.details[0].message});
         }
 
-        const userToken = await deviceModel.findOne({token: req.body.refreshToken});
-        if (!userToken)
-            return res
-                .status(200)
-                .json({error: false, message: "Logged Out Successfully"});
+        let device = await deviceModel.findOne({token: req.body.refreshToken});
+        let isDelete = await deviceModel.deleteOne({token: req.body.refreshToken});
 
-        await userToken.remove();
+        if (!isDelete.deletedCount){
+            return res
+                .status(400)
+                .json({error: true, message: "Logout single failed"});
+        }
+
+        if (req.path === '/logout-all') {
+            const userId = device['userId']
+            isDelete = await deviceModel.deleteMany({userId: userId});
+        }
+
+        if (!isDelete.deletedCount){
+            return res
+                .status(400)
+                .json({error: true, message: "Logout multi failed"});
+        }
+
         res.status(200).json({error: false, message: "Logged Out Successfully"});
     } catch (err) {
         console.log(err);

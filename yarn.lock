@@ -1085,6 +1085,11 @@
     "pseudomap" "^1.0.2"
     "yallist" "^2.1.2"
 
+"macaddress@^0.5.3":
+  "integrity" "sha512-vGBKTA+jwM4KgjGZ+S/8/Mkj9rWzePyGY6jManXPGhiWu63RYwW8dKPyk5koP+8qNVhPhHgFa1y/MJ4wrjsNrg=="
+  "resolved" "https://registry.npmjs.org/macaddress/-/macaddress-0.5.3.tgz"
+  "version" "0.5.3"
+
 "make-dir@^3.0.0", "make-dir@^3.1.0":
   "integrity" "sha512-g3FeP20LNwhALb/6Cz6Dd4F2ngze0jz7tbzrD2wAV+o9FeNHe4rL+yK2md0J/fiSf1sa1ADhXqi5+oVwOM/eGw=="
   "resolved" "https://registry.npmjs.org/make-dir/-/make-dir-3.1.0.tgz"
