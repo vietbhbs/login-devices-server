@@ -23,5 +23,8 @@
     "nodemon": "^2.0.15",
     "rand-token": "^1.0.1",
     "socket.io": "^4.4.1"
+  },
+  "nodemonConfig": {
+    "ext": "js,html"
   }
 }

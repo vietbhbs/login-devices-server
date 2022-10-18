@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const authRoutes = require("./routes/auth");
 const messageRoutes = require("./routes/messages");
+const webRoutes = require("./routes/web");
 const app = express();
 const http = require('http');
 const {Server} = require("socket.io");
@@ -11,10 +12,12 @@ const io = new Server(server);
 const device = require('express-device');
 const {logOut} = require("./controllers/userController");
 require("dotenv").config();
+const path = require('path');
 
 app.use(cors());
 app.use(express.json());
 app.use(device.capture());
+app.use(express.static(path.join(__dirname, 'resource/public')));
 
 mongoose
     .connect(process.env.MONGO_URL, {
@@ -30,6 +33,7 @@ mongoose
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/", webRoutes);
 
 io.on('connection', (socket) => {
     socket.on('logout all device', (refreshToken) => {

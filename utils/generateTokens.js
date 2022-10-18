@@ -7,7 +7,7 @@ module.exports.generateTokens = async (user, deviceName) => {
         const accessToken = jwt.sign(
             payload,
             process.env.ACCESS_TOKEN_PRIVATE_KEY,
-            { expiresIn: "24h" }
+            { expiresIn: "1m" }
         );
         const refreshToken = jwt.sign(
             payload,

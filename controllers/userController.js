@@ -50,10 +50,10 @@ module.exports.login = async (req, res, next) => {
         }
 
         // save user device
-        let deviceName = ''
+        let deviceName = '';
         macaddress.one(function (err, mac) {
             deviceName = req.device.type + '-' + mac;
-            ;
+
         });
 
         const devicesAvailable = await checkLoginDevices(user['_id'].toString());

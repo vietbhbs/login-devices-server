@@ -18,6 +18,6 @@ router.post("/setavatar/:id", setAvatar);
 router.post("/logout", logOut);
 router.post("/logout-all", logOut);
 router.get("/disconnect", disconnect);
-router.post("/refresh-token", freshToken)
+router.post("/refresh-token", freshToken);
 
 module.exports = router;
