@@ -11,6 +11,10 @@ router.get("/login", (req, res, next) => {
     res.sendFile(__dirname.substring(0, __dirname.lastIndexOf("routes")) + 'resource/login.html');
 });
 
+router.get("/register", (req, res, next) => {
+    res.sendFile(__dirname.substring(0, __dirname.lastIndexOf("routes")) + 'resource/register.html');
+});
+
 router.post("/verify-token", checkToken);
 
 module.exports = router;

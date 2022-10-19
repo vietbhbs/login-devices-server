@@ -83,21 +83,25 @@
 <script src="js/sb-admin-2.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+    const socket = io();
+    const domain = window.location.origin
+
     $('form').on('submit', function (e) {
         e.preventDefault();
         $.ajax({
             type: 'POST',
-            dataType:"json",
+            dataType: "json",
             processData: false,
             contentType: 'application/json',
-            data: JSON.stringify( { email: $('input[type=email]').val(), password: $('input[type=password]').val() } ),
-            url: 'http://localhost:5050/api/auth/login',
+            data: JSON.stringify({email: $('input[type=email]').val(), password: $('input[type=password]').val()}),
+            url: domain + '/api/auth/login',
             success: function (data, status, xhr) {
                 sessionStorage.setItem('nodejs-login-token', data.accessToken);
+                sessionStorage.setItem('nodejs-login-rf-token', data.refreshToken);
+                socket.emit('account update', true);
                 window.location.href = '/';
             },
-            error: function (data, status, xhr){
-                $('input[type=email]').val('');
+            error: function (data, status, xhr) {
                 $('input[type=password]').val('');
                 alert('Login failed');
             }

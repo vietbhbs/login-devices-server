@@ -5,7 +5,8 @@ const {
     setAvatar,
     logOut,
     disconnect,
-    freshToken
+    freshToken,
+    getAllDevices
 } = require("../controllers/userController");
 
 const {auth} = require("../middleware/auth");
@@ -19,5 +20,6 @@ router.post("/logout", logOut);
 router.post("/logout-all", logOut);
 router.get("/disconnect", disconnect);
 router.post("/refresh-token", freshToken);
+router.post("/devices", getAllDevices);
 
 module.exports = router;

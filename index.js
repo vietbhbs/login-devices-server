@@ -45,7 +45,7 @@ io.on('connection', (socket) => {
                 }
             }
         ).then(() => {
-            io.emit('devices logout', 'devices logout');
+            io.emit('devices logout', refreshToken);
         });
     })
     socket.on('logout device', (refreshToken) => {
@@ -57,8 +57,11 @@ io.on('connection', (socket) => {
                 }
             }
         ).then(() => {
-            io.emit('device logout', 'device logout');
+            io.emit('device logout', refreshToken);
         });
+    })
+    socket.on('account update', (bool) => {
+        io.emit('account update', bool);
     })
 });
 

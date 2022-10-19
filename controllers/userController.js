@@ -1,10 +1,7 @@
 const User = require("../models/userModel");
 const Device = require("../models/deviceModel");
 const bcrypt = require("bcrypt");
-const {disconnect, disconnectSockets, on} = require("socket.io");
-const io = require("nodemon");
 const authMethod = require("../models/methodsModel");
-const socket = require("./userController");
 const deviceModel = require("../models/deviceModel");
 
 const jwt = require('jsonwebtoken');
@@ -50,10 +47,9 @@ module.exports.login = async (req, res, next) => {
         }
 
         // save user device
-        let deviceName = '';
+        let macAdress = '';
         macaddress.one(function (err, mac) {
-            deviceName = req.device.type + '-' + mac;
-
+            macAdress = mac+'-1';
         });
 
         const devicesAvailable = await checkLoginDevices(user['_id'].toString());
@@ -63,7 +59,7 @@ module.exports.login = async (req, res, next) => {
                 .json({error: true, message: "Limit devices logged"});
         }
 
-        const {accessToken, refreshToken} = await generateTokens(user, deviceName);
+        const {accessToken, refreshToken} = await generateTokens(user, req.device.type+'a', macAdress);
 
         res.status(200).json({
             error: false,
@@ -146,18 +142,14 @@ module.exports.logOut = async (req, res, next) => {
         const {error} = refreshTokenBodyValidation(req.body);
 
         if (error) {
-            return res
-                .status(400)
-                .json({error: true, message: error.details[0].message});
+            return
         }
 
-        let device = await deviceModel.findOne({token: req.body.refreshToken});
-        let isDelete = await deviceModel.deleteOne({token: req.body.refreshToken});
+        let device = await deviceModel.findOne({refreshToken: req.body.refreshToken});
+        let isDelete = await deviceModel.deleteOne({refreshToken: req.body.refreshToken});
 
-        if (!isDelete.deletedCount){
-            return res
-                .status(400)
-                .json({error: true, message: "Logout single failed"});
+        if (isDelete.deletedCount > 0) {
+            return
         }
 
         if (req.path === '/logout-all') {
@@ -165,16 +157,13 @@ module.exports.logOut = async (req, res, next) => {
             isDelete = await deviceModel.deleteMany({userId: userId});
         }
 
-        if (!isDelete.deletedCount){
-            return res
-                .status(400)
-                .json({error: true, message: "Logout multi failed"});
+        if (isDelete.deletedCount > 0) {
+            return
         }
 
-        res.status(200).json({error: false, message: "Logged Out Successfully"});
+        return req.body.refreshToken
     } catch (err) {
         console.log(err);
-        res.status(500).json({error: true, message: "Internal Server Error"});
     }
 };
 
@@ -233,6 +222,31 @@ module.exports.freshToken = async (req, res) => {
             });
         })
         .catch((err) => res.status(400).json(err));
+}
+
+module.exports.getAllDevices = async (req, res) => {
+    const accessToken = req.body.accessToken;
+
+    if (!accessToken) {
+        return res.status(400)
+            .json({error: true, message: 'access token not valid'});
+    }
+    const device = await deviceModel.findOne({accessToken: accessToken});
+
+    if (!device.userId){
+        return res.status(400)
+            .json({error: true, message: 'Devices is not available'});
+    }
+    const userId = device.userId ? device.userId: ''
+
+    const devices = await deviceModel.find({userId: userId})
+        .select('deviceName refreshToken accessToken');
+
+    return res.status(200).json({
+        error: false,
+        data: devices
+    });
+
 }
 
 

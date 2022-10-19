@@ -6,11 +6,19 @@ const deviceSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    mac: {
+        type: String,
+        required: true,
+    },
     userId: {
         type: Schema.Types.ObjectId,
         required: true,
     },
-    token: {
+    refreshToken: {
+        type: String,
+        required: true
+    },
+    accessToken: {
         type: String,
         required: true
     },
