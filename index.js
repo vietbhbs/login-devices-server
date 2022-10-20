@@ -60,9 +60,9 @@ io.on('connection', (socket) => {
             io.emit('device logout', refreshToken);
         });
     })
-    socket.on('account update', (bool) => {
-        io.emit('account update', bool);
-    })
+    // socket.on('account update', (bool) => {
+    //     io.emit('account update', bool);
+    // })
 });
 
 server.listen(process.env.PORT, () => {

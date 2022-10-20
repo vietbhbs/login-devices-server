@@ -213,7 +213,6 @@ module.exports.getAllDevices = async (req, res) => {
         data: devices,
         user: user
     });
-
 }
 
 
