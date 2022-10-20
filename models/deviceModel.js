@@ -6,10 +6,6 @@ const deviceSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    mac: {
-        type: String,
-        required: true,
-    },
     userId: {
         type: Schema.Types.ObjectId,
         required: true,

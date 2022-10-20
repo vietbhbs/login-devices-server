@@ -7,7 +7,6 @@ const deviceModel = require("../models/deviceModel");
 const jwt = require('jsonwebtoken');
 const promisify = require('util').promisify;
 // const randToken = require('rand-token');
-const macaddress = require('macaddress')
 const jwtVariable = require('../variables/jwt');
 const {
     signUpBodyValidation,
@@ -45,11 +44,6 @@ module.exports.login = async (req, res, next) => {
         }
 
         // save user device
-        let macAdress = '';
-        macaddress.one(function (err, mac) {
-            macAdress = mac;
-        });
-
         const devicesAvailable = await checkLoginDevices(user['_id'].toString());
 
         if (devicesAvailable.length >= 3) {
@@ -57,7 +51,7 @@ module.exports.login = async (req, res, next) => {
                 .json({error: true, message: "Limit devices logged"});
         }
 
-        const {accessToken, refreshToken} = await generateTokens(user, req.device.type + macAdress, macAdress);
+        const {accessToken, refreshToken} = await generateTokens(user, req.useragent.os);
 
         res.status(200).json({
             error: false,

@@ -10,6 +10,7 @@ const {Server} = require("socket.io");
 const server = http.createServer(app);
 const io = new Server(server);
 const device = require('express-device');
+const useragent = require('express-useragent');
 const {logOut} = require("./controllers/userController");
 require("dotenv").config();
 const path = require('path');
@@ -17,6 +18,7 @@ const path = require('path');
 app.use(cors());
 app.use(express.json());
 app.use(device.capture());
+app.use(useragent.express());
 app.use(express.static(path.join(__dirname, 'resource/public')));
 
 mongoose
