@@ -8,8 +8,6 @@ const jwt = require('jsonwebtoken');
 const promisify = require('util').promisify;
 // const randToken = require('rand-token');
 const macaddress = require('macaddress')
-const sign = promisify(jwt.sign).bind(jwt);
-const verify = promisify(jwt.verify).bind(jwt);
 const jwtVariable = require('../variables/jwt');
 const {
     signUpBodyValidation,
@@ -167,39 +165,6 @@ module.exports.logOut = async (req, res, next) => {
     }
 };
 
-module.exports.disconnect = async (req, res, next) => {
-    try {
-        const accessTokenFromHeader = req.headers.x_authorization;
-        if (!accessTokenFromHeader) {
-            return res.status(401).send('Không tìm thấy access token!');
-        }
-        const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
-
-        const verified = await authMethod.verifyToken(
-            accessTokenFromHeader,
-            accessTokenSecret,
-        );
-        console.log(verified);
-        if (!verified) {
-            return res
-                .status(401)
-                .send('Bạn không có quyền truy cập vào tính năng này!');
-        }
-        await User.findByIdAndUpdate(
-            req.params.id,
-            {
-                accessToken: accessToken
-            },
-            {new: true}
-        );
-        onlineUsers.delete(req.params.id);
-        return res.status(200).send();
-
-    } catch (ex) {
-        next(ex);
-    }
-};
-
 module.exports.freshToken = async (req, res) => {
     const {error} = refreshTokenBodyValidation(req.body);
     if (error) {
@@ -238,13 +203,15 @@ module.exports.getAllDevices = async (req, res) => {
             .json({error: true, message: 'Devices is not available'});
     }
     const userId = device.userId ? device.userId: ''
-
+    const user = await User.findById(userId)
+        .select('username email');
     const devices = await deviceModel.find({userId: userId})
         .select('deviceName refreshToken accessToken');
 
     return res.status(200).json({
         error: false,
-        data: devices
+        data: devices,
+        user: user
     });
 
 }

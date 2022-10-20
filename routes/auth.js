@@ -4,7 +4,6 @@ const {
     getAllUsers,
     setAvatar,
     logOut,
-    disconnect,
     freshToken,
     getAllDevices
 } = require("../controllers/userController");
@@ -18,7 +17,6 @@ router.get("/users/", auth, getAllUsers);
 router.post("/setavatar/:id", setAvatar);
 router.post("/logout", logOut);
 router.post("/logout-all", logOut);
-router.get("/disconnect", disconnect);
 router.post("/refresh-token", freshToken);
 router.post("/devices", getAllDevices);
 
