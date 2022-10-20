@@ -47,7 +47,7 @@ module.exports.login = async (req, res, next) => {
         // save user device
         let macAdress = '';
         macaddress.one(function (err, mac) {
-            macAdress = mac+'-1';
+            macAdress = mac;
         });
 
         const devicesAvailable = await checkLoginDevices(user['_id'].toString());
@@ -57,7 +57,7 @@ module.exports.login = async (req, res, next) => {
                 .json({error: true, message: "Limit devices logged"});
         }
 
-        const {accessToken, refreshToken} = await generateTokens(user, req.device.type+'a', macAdress);
+        const {accessToken, refreshToken} = await generateTokens(user, req.device.type, macAdress);
 
         res.status(200).json({
             error: false,
