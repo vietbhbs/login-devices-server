@@ -57,7 +57,7 @@ module.exports.login = async (req, res, next) => {
                 .json({error: true, message: "Limit devices logged"});
         }
 
-        const {accessToken, refreshToken} = await generateTokens(user, req.device.type, macAdress);
+        const {accessToken, refreshToken} = await generateTokens(user, req.device.type + macAdress, macAdress);
 
         res.status(200).json({
             error: false,
