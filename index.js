@@ -65,6 +65,6 @@ io.on('connection', (socket) => {
     })
 });
 
-server.listen(5050, () => {
-    console.log('listening on *:5050');
+server.listen(process.env.PORT, () => {
+    console.log('listening on *:heroku');
 });
