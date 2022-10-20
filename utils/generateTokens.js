@@ -1,25 +1,33 @@
 const jwt = require("jsonwebtoken");
-const userToken = require("../models/deviceModel");
+const deviceModel = require("../models/deviceModel");
 
-module.exports.generateTokens = async (user) => {
+module.exports.generateTokens = async (user, deviceName, macAddress) => {
     try {
-        const payload = { _id: user._id };
+        const payload = {_id: user._id};
         const accessToken = jwt.sign(
             payload,
             process.env.ACCESS_TOKEN_PRIVATE_KEY,
-            { expiresIn: "14m" }
+            {expiresIn: "24h"}
         );
         const refreshToken = jwt.sign(
             payload,
             process.env.REFRESH_TOKEN_PRIVATE_KEY,
-            { expiresIn: "30d" }
+            {expiresIn: "7d"}
         );
 
-        const userToken = await UserToken.findOne({ userId: user._id });
-        if (userToken) await userToken.remove();
+        const device = await deviceModel.findOne({userId: user._id, deviceName: deviceName});
+        if (device) await device.remove();
 
-        await new UserToken({ userId: user._id, token: refreshToken }).save();
-        return Promise.resolve({ accessToken, refreshToken });
+        await new deviceModel(
+            {
+                userId: user._id,
+                refreshToken: refreshToken,
+                deviceName: deviceName,
+                accessToken: accessToken,
+                mac: macAddress
+            }
+        ).save();
+        return Promise.resolve({accessToken, refreshToken});
     } catch (err) {
         return Promise.reject(err);
     }

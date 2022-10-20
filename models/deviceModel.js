@@ -1,24 +1,26 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
 const deviceSchema = new mongoose.Schema({
     deviceName: {
         type: String,
         required: true,
     },
-    email: {
+    mac: {
         type: String,
         required: true,
     },
-    accessToken: {
-        type: String,
-        default: ''
+    userId: {
+        type: Schema.Types.ObjectId,
+        required: true,
     },
     refreshToken: {
         type: String,
-        default: ''
+        required: true
     },
-    isLogin: {
-        type: Boolean
+    accessToken: {
+        type: String,
+        required: true
     },
     createdAt: {
         type: Date,

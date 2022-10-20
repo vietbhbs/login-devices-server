@@ -1,116 +1,108 @@
 const User = require("../models/userModel");
 const Device = require("../models/deviceModel");
 const bcrypt = require("bcrypt");
-const {disconnect, disconnectSockets, on} = require("socket.io");
-const io = require("nodemon");
 const authMethod = require("../models/methodsModel");
-const socket = require("./userController");
+const deviceModel = require("../models/deviceModel");
 
 const jwt = require('jsonwebtoken');
 const promisify = require('util').promisify;
-const randToken = require('rand-token');
-const sign = promisify(jwt.sign).bind(jwt);
-const verify = promisify(jwt.verify).bind(jwt);
+// const randToken = require('rand-token');
+const macaddress = require('macaddress')
 const jwtVariable = require('../variables/jwt');
+const {
+    signUpBodyValidation,
+    logInBodyValidation,
+    checkLoginDevices,
+    refreshTokenBodyValidation
+} = require("../utils/validationSchema");
+const {generateTokens} = require("../utils/generateTokens");
+const {verifyRefreshToken} = require("../utils/refreshToken");
 
 module.exports.login = async (req, res, next) => {
     try {
-        // check account
-        const {username, password} = req.body;
-        const user = await User.findOne({username});
+        const {error} = logInBodyValidation(req.body);
 
-        if (!user) return res.json({msg: "Incorrect Username or Password", status: false});
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) return res.json({msg: "Incorrect Username or Password", status: false});
+        if (error) {
+            return res.status(400)
+                .json({error: true, message: error.details[0].message});
+        }
 
-        const accessTokenLife = process.env.ACCESS_TOKEN_LIFE;
-        const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
+        const user = await User.findOne({email: req.body.email});
 
-        const dataForAccessToken = {
-            username: user.username,
-        };
+        if (!user) {
+            return res.status(401)
+                .json({error: true, message: "Invalid email or password"});
+        }
 
-        const accessToken = await authMethod.generateToken(
-            dataForAccessToken,
-            accessTokenSecret,
-            accessTokenLife,
+        const verifiedPassword = await bcrypt.compare(
+            req.body.password,
+            user.password
         );
 
-        if (!accessToken) {
-            return res
-                .status(401)
-                .send('Đăng nhập không thành công, vui lòng thử lại.');
+        if (!verifiedPassword) {
+            return res.status(401)
+                .json({error: true, message: "Invalid email or password"});
         }
 
-        let refreshToken = randToken.generate(jwtVariable.refreshTokenSize); // tạo 1 refresh token ngẫu nhiên
-
-        if (!user.refreshToken) {
-            await User.findByIdAndUpdate(
-                user.id,
-                {
-                    refreshToken: refreshToken,
-                    accessToken: accessToken
-                },
-                {new: true}
-            );
-        } else {
-            // Nếu user này đã có refresh token thì lấy refresh token đó từ database
-            await User.findByIdAndUpdate(
-                user.id,
-                {
-                    accessToken: accessToken
-                },
-                {new: true}
-            );
-
-        }
-
-        return res.json({
-            status: true,
-            user
+        // save user device
+        let macAdress = '';
+        macaddress.one(function (err, mac) {
+            macAdress = mac+'-1';
         });
-    } catch (ex) {
-        next(ex);
+
+        const devicesAvailable = await checkLoginDevices(user['_id'].toString());
+
+        if (devicesAvailable.length >= 3) {
+            return res.status(401)
+                .json({error: true, message: "Limit devices logged"});
+        }
+
+        const {accessToken, refreshToken} = await generateTokens(user, req.device.type+'a', macAdress);
+
+        res.status(200).json({
+            error: false,
+            accessToken,
+            refreshToken,
+            message: "Logged in successfully",
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({error: true, message: "Internal Server Error"});
     }
 };
 
 module.exports.register = async (req, res, next) => {
     try {
-        const {username, email, password} = req.body;
-        const usernameCheck = await User.findOne({username});
-        if (usernameCheck)
-            return res.json({msg: "Username already used", status: false});
-        const emailCheck = await User.findOne({email});
-        if (emailCheck)
-            return res.json({msg: "Email already used", status: false});
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await User.create({
-            email,
-            username,
-            password: hashedPassword,
-        });
-        delete user.password;
-        // save user device
-        const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : '';
-        const deviceName = req.device.type + '-' + userAgent
-        const device = await Device.create({
-            deviceName,
-            email
-        })
-        return res.json({status: true, user, device});
-    } catch (ex) {
-        next(ex);
+        const {error} = signUpBodyValidation(req.body);
+
+        if (error) {
+            return res.status(400)
+                .json({error: true, message: error.details[0].message});
+        }
+
+        const user = await User.findOne({email: req.body.email});
+
+        if (user) {
+            return res.status(400)
+                .json({error: true, message: "User with given email already exist"});
+        }
+
+        const salt = await bcrypt.genSalt(Number(process.env.SALT));
+        const hashPassword = await bcrypt.hash(req.body.password, salt);
+
+        await new User({...req.body, password: hashPassword}).save();
+
+        res.status(201)
+            .json({error: false, message: "Account created successfully"});
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({error: true, message: "Internal Server Error"});
     }
 };
 
 module.exports.getAllUsers = async (req, res, next) => {
     try {
-        const accessTokenFromHeader = req.headers.x_authorization;
-        console.log(accessTokenFromHeader);
-        if (!accessTokenFromHeader) {
-            return res.status(401).send('Không tìm thấy access token!');
-        }
-        const users = await User.find({_id: {$ne: req.params.id}}).select([
+        const users = await User.find().select([
             "email",
             "username",
             "avatarImage",
@@ -143,46 +135,85 @@ module.exports.setAvatar = async (req, res, next) => {
     }
 };
 
-module.exports.logOut = (req, res, next) => {
+module.exports.logOut = async (req, res, next) => {
     try {
-        if (!req.params.id) return res.json({msg: "User id is required "});
-        onlineUsers.delete(req.params.id);
-        return res.status(200).send();
-    } catch (ex) {
-        next(ex);
+        const {error} = refreshTokenBodyValidation(req.body);
+
+        if (error) {
+            return
+        }
+
+        let device = await deviceModel.findOne({refreshToken: req.body.refreshToken});
+        let isDelete = await deviceModel.deleteOne({refreshToken: req.body.refreshToken});
+
+        if (isDelete.deletedCount > 0) {
+            return
+        }
+
+        if (req.path === '/logout-all') {
+            const userId = device['userId']
+            isDelete = await deviceModel.deleteMany({userId: userId});
+        }
+
+        if (isDelete.deletedCount > 0) {
+            return
+        }
+
+        return req.body.refreshToken
+    } catch (err) {
+        console.log(err);
     }
 };
-module.exports.disconnect = async (req, res, next) => {
-    try {
-        const accessTokenFromHeader = req.headers.x_authorization;
-        if (!accessTokenFromHeader) {
-            return res.status(401).send('Không tìm thấy access token!');
-        }
-        const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
 
-        const verified = await authMethod.verifyToken(
-            accessTokenFromHeader,
-            accessTokenSecret,
-        );
-        console.log(verified);
-        if (!verified) {
-            return res
-                .status(401)
-                .send('Bạn không có quyền truy cập vào tính năng này!');
-        }
-        await User.findByIdAndUpdate(
-            req.params.id,
-            {
-                accessToken: accessToken
-            },
-            {new: true}
-        );
-        onlineUsers.delete(req.params.id);
-        return res.status(200).send();
-
-    } catch (ex) {
-        next(ex);
+module.exports.freshToken = async (req, res) => {
+    const {error} = refreshTokenBodyValidation(req.body);
+    if (error) {
+        return res.status(400)
+            .json({error: true, message: error.details[0].message});
     }
 
-};
+    verifyRefreshToken(req.body.refreshToken)
+        .then(({tokenDetails}) => {
+            const payload = {_id: tokenDetails._id,};
+            const accessToken = jwt.sign(
+                payload,
+                process.env.ACCESS_TOKEN_PRIVATE_KEY,
+                {expiresIn: "24h"}
+            );
+            res.status(200).json({
+                error: false,
+                accessToken,
+                message: "Access token created successfully",
+            });
+        })
+        .catch((err) => res.status(400).json(err));
+}
+
+module.exports.getAllDevices = async (req, res) => {
+    const accessToken = req.body.accessToken;
+
+    if (!accessToken) {
+        return res.status(400)
+            .json({error: true, message: 'access token not valid'});
+    }
+    const device = await deviceModel.findOne({accessToken: accessToken});
+
+    if (!device.userId){
+        return res.status(400)
+            .json({error: true, message: 'Devices is not available'});
+    }
+    const userId = device.userId ? device.userId: ''
+    const user = await User.findById(userId)
+        .select('username email');
+    const devices = await deviceModel.find({userId: userId})
+        .select('deviceName refreshToken accessToken');
+
+    return res.status(200).json({
+        error: false,
+        data: devices,
+        user: user
+    });
+
+}
+
 
