@@ -51,7 +51,10 @@ module.exports.login = async (req, res, next) => {
                 .json({error: true, message: "Limit devices logged"});
         }
 
-        const {accessToken, refreshToken} = await generateTokens(user, req.useragent.os);
+        const {
+            accessToken,
+            refreshToken
+        } = await generateTokens(user, req.useragent.os + '-' + Math.random().toString(36).substring(2, 7));
 
         res.status(200).json({
             error: false,
@@ -192,11 +195,11 @@ module.exports.getAllDevices = async (req, res) => {
     }
     const device = await deviceModel.findOne({accessToken: accessToken});
 
-    if (!device.userId){
+    if (!device.userId) {
         return res.status(400)
             .json({error: true, message: 'Devices is not available'});
     }
-    const userId = device.userId ? device.userId: ''
+    const userId = device.userId ? device.userId : ''
     const user = await User.findById(userId)
         .select('username email');
     const devices = await deviceModel.find({userId: userId})
