@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const deviceModel = require("../models/deviceModel");
 
-module.exports.generateTokens = async (user, deviceName, macAddress) => {
+module.exports.generateTokens = async (user, deviceName) => {
     try {
         const payload = {_id: user._id};
         const accessToken = jwt.sign(
@@ -24,7 +24,6 @@ module.exports.generateTokens = async (user, deviceName, macAddress) => {
                 refreshToken: refreshToken,
                 deviceName: deviceName,
                 accessToken: accessToken,
-                mac: macAddress
             }
         ).save();
         return Promise.resolve({accessToken, refreshToken});
