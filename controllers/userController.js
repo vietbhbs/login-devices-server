@@ -50,8 +50,6 @@ module.exports.login = async (req, res, next) => {
             return res.status(401)
                 .json({error: true, message: "Limit devices logged"});
         }
-
-        alert(req.device)
         const {
             accessToken,
             refreshToken
