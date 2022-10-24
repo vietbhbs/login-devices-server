@@ -27,10 +27,8 @@ const refreshTokenBodyValidation = (body) => {
 };
 
 const checkLoginDevices = async (userId) => {
-    const countDevice = await Device.findOne({userId: userId})
+    return Device.findOne({userId: userId})
         .distinct('deviceName');
-
-    return countDevice;
 };
 
 module.exports = {

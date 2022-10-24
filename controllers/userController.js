@@ -51,11 +51,11 @@ module.exports.login = async (req, res, next) => {
                 .json({error: true, message: "Limit devices logged"});
         }
 
+        alert(req.device)
         const {
             accessToken,
             refreshToken
         } = await generateTokens(user, req.useragent.os + '-' + Math.random().toString(36).substring(2, 7));
-
         res.status(200).json({
             error: false,
             accessToken,
