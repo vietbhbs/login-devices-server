@@ -794,7 +794,7 @@
     }
 
     socket.on('device logout', (refreshToken) => {
-        if (refreshToken == sessionStorage.getItem('nodejs-login-rf-token')) {
+        if (refreshToken === sessionStorage.getItem('nodejs-login-rf-token')) {
             sessionStorage.removeItem('nodejs-login-token');
             sessionStorage.removeItem('nodejs-login-rf-token');
             window.location.reload();
